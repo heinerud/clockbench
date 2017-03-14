@@ -25,6 +25,8 @@ function FriendlyChat() {
   // this.messageInput = document.getElementById('message');
   this.inButton = document.getElementById('in');
   this.outButton = document.getElementById('out');
+  this.downloadButton = document.getElementById('download');
+
   // this.submitImageButton = document.getElementById('submitImage');
   // this.imageForm = document.getElementById('image-form');
   // this.mediaCapture = document.getElementById('mediaCapture');
@@ -37,6 +39,7 @@ function FriendlyChat() {
   // Saves message on form submit.
   this.inButton.addEventListener('click', this.saveMessage.bind(this));
   this.outButton.addEventListener('click', this.saveMessage.bind(this));
+  this.downloadButton.addEventListener('click', this.downloadLogs.bind(this));
   this.signOutButton.addEventListener('click', this.signOut.bind(this));
   this.signInButton.addEventListener('click', this.signIn.bind(this));
 
@@ -69,7 +72,7 @@ FriendlyChat.prototype.initFirebase = function () {
 FriendlyChat.prototype.loadMessages = function () {
   var currentUser = this.auth.currentUser;
   // Reference to the /messages/ database path.
-  this.logsRef = this.database.ref('logs/' + currentUser.uid);
+  this.logsRef = this.database.ref('users/' + currentUser.uid);
   // Make sure we remove all previous listeners.
   this.logsRef.off();
 
@@ -100,6 +103,20 @@ FriendlyChat.prototype.saveMessage = function (e) {
       photoUrl: currentUser.photoURL || '/images/profile_placeholder.png'
     }).catch(function (error) {
       console.error('Error writing new message to Firebase Database', error);
+    });
+  }
+};
+
+FriendlyChat.prototype.downloadLogs = function (e) {
+  e.preventDefault();
+  // Check that the user entered a message and is signed in.
+  if (this.checkSignedInWithMessage()) {
+    this.logsRef.once("value", function (snapshot) {
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snapshot, null, 2));
+      var dlAnchorElem = document.getElementById('downloadAnchorElem');
+      dlAnchorElem.setAttribute("href", dataStr);
+      dlAnchorElem.setAttribute("download", "snapshot.json");
+      dlAnchorElem.click();
     });
   }
 };
