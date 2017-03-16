@@ -23,8 +23,8 @@ function FriendlyChat() {
   this.messageList = document.getElementById('messages');
   this.messageForm = document.getElementById('message-form');
   // this.messageInput = document.getElementById('message');
-  this.inButton = document.getElementById('in');
-  this.outButton = document.getElementById('out');
+  this.logButton = document.getElementById('logButton');
+  // this.outButton = document.getElementById('out');
   this.downloadButton = document.getElementById('download');
 
   // this.submitImageButton = document.getElementById('submitImage');
@@ -37,8 +37,8 @@ function FriendlyChat() {
   this.signInSnackbar = document.getElementById('must-signin-snackbar');
 
   // Saves message on form submit.
-  this.inButton.addEventListener('click', this.saveMessage.bind(this));
-  this.outButton.addEventListener('click', this.saveMessage.bind(this));
+  this.logButton.addEventListener('click', this.saveMessage.bind(this));
+  // this.outButton.addEventListener('click', this.saveMessage.bind(this));
   this.downloadButton.addEventListener('click', this.downloadLogs.bind(this));
   this.signOutButton.addEventListener('click', this.signOut.bind(this));
   this.signInButton.addEventListener('click', this.signIn.bind(this));
@@ -79,7 +79,7 @@ FriendlyChat.prototype.loadMessages = function () {
   // Loads the last 12 messages and listen for new ones.
   var setMessage = function (data) {
     var val = data.val();
-    var text = val.time + ' (' + val.action.toUpperCase() + ')';
+    var text = val.time + ' (' + val.action + ')';
     this.displayMessage(data.key, val.name, text, val.photoUrl);
     this.toggleButtons(val.action);
   }.bind(this);
@@ -93,13 +93,22 @@ FriendlyChat.prototype.saveMessage = function (e) {
   // Check that the user entered a message and is signed in.
   if (this.checkSignedInWithMessage()) {
     var currentUser = this.auth.currentUser;
-    var date = new Date();
-    var dateStr = date.getFullYear() + '-' + date.getMonth() + '-' + date.getDate() + ', ' + date.getHours() + ':' + date.getMinutes()
+    var now = new Date();
+    var month = now.getMonth();
+    if (month.toString().length == 1) { month = '0' + month }
+    var date = now.getDate();
+    if (date.toString().length == 1) { date = '0' + date }
+    var hours = now.getHours();
+    if (hours.toString().length == 1) { hours = '0' + hours }
+    var minutes = now.getMinutes();
+    if (minutes.toString().length == 1) { minutes = '0' + minutes }
+
+    var dateStr = now.getFullYear() + '-' + month + '-' + date + ', ' + hours + ':' + minutes
     // Add a new message entry to the Firebase Database.
     this.logsRef.push({
       name: currentUser.displayName,
       time: dateStr,
-      action: e.srcElement.offsetParent.id,
+      action: this.logButton.innerText,
       photoUrl: currentUser.photoURL || '/images/profile_placeholder.png'
     }).catch(function (error) {
       console.error('Error writing new message to Firebase Database', error);
@@ -111,13 +120,26 @@ FriendlyChat.prototype.downloadLogs = function (e) {
   e.preventDefault();
   // Check that the user entered a message and is signed in.
   if (this.checkSignedInWithMessage()) {
+    var name = this.auth.currentUser.displayName
     this.logsRef.once("value", function (snapshot) {
-      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(snapshot, null, 2));
+      var data = []
+      snapshot.forEach(function (child) {
+        var childVal = child.val()
+        data.push({ time: childVal.time, action: childVal.action })
+      })
+      var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
       var dlAnchorElem = document.getElementById('downloadAnchorElem');
       dlAnchorElem.setAttribute("href", dataStr);
-      dlAnchorElem.setAttribute("download", "snapshot.json");
+      dlAnchorElem.setAttribute("download", name.replace(/ /g, '') + "_snapshot.json");
       dlAnchorElem.click();
     });
+    if (confirm('Do you want to clear all your entrys?')) {
+      this.logsRef.remove()
+      location.reload()
+    } else {
+      // Do nothing!
+    }
+
   }
 };
 
@@ -165,6 +187,7 @@ FriendlyChat.prototype.signIn = function () {
 FriendlyChat.prototype.signOut = function () {
   // Sign out of Firebase.
   this.auth.signOut();
+  location.reload()
 };
 
 // Triggers when the auth state change for instance when the user signs-in or signs-out.
@@ -273,12 +296,10 @@ FriendlyChat.prototype.displayMessage = function (key, name, text, picUrl) {
 // Enables or disables the submit button depending on the values of the input
 // fields.
 FriendlyChat.prototype.toggleButtons = function (action) {
-  if (action == 'out') {
-    this.inButton.removeAttribute('disabled');
-    this.outButton.setAttribute('disabled', 'true');
+  if (action == 'IN') {
+    this.logButton.innerText = 'OUT';
   } else {
-    this.outButton.removeAttribute('disabled');
-    this.inButton.setAttribute('disabled', 'true');
+    this.logButton.innerText = 'IN';
   }
 };
 
