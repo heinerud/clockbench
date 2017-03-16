@@ -136,10 +136,7 @@ FriendlyChat.prototype.downloadLogs = function (e) {
     if (confirm('Do you want to clear all your entrys?')) {
       this.logsRef.remove()
       location.reload()
-    } else {
-      // Do nothing!
     }
-
   }
 };
 
